@@ -25,25 +25,26 @@ from textblob import TextBlob       # versione 1
 import nltk                         # versione 3 come da modulo
 nltk.download('vader_lexicon')
 from nltk.sentiment import SentimentIntensityAnalyzer
-# versione 4con google, funziona solo con lui
+# versione 4 con google, funziona solo con lui
 from deep_translator import GoogleTranslator
-from nltk.sentiment import SentimentIntensityAnalyzer
-
+# versione 5 del modulo con Logistic Regression
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 
 # link: https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html
 # link: https://textblob.readthedocs.io/en/dev/
 
-def feedback_inviati():
+def feedback_inviati(): # mi creo una lista di stringhe e creo il df
     print("Inizio acquisizione dei feedback degli utenti")
-    # feedbacks = [
-    #     "Evento sulle Ai SUPER!!",
-    #     "evento un po' lunghetto",
-    #     "mi sono divertito. grandi!!",
-    #     "Complimenti, è stato interessante!&%",
-    #     "pazzesco, non pensavo fosse così",
-    #     "non è andata bene"
-    # ]
-
+    feedbacks = [
+        "Evento sulle AI grandioso!!",
+        "evento un po' lunghetto",
+        "mi sono divertito. grandi!!",
+        "Complimenti, è stato interessante!&%",
+        "pazzesco, non pensavo fosse così",
+        "non è andata bene"
+    ]
     feedbacks_inglese = [
         "very good",
         "that was boring",
@@ -52,30 +53,22 @@ def feedback_inviati():
         "I found love in this event",
         "Amzing, never felt so happy"
     ]
-
-    feedbacks = [
-        " Bellissimo evento!!! 👍👏 ",
-        "Troppo lungo, mi sono annoiato...",
-        "Molto ben organizzato. Complimenti!",
-        "non mi è piaciuto per niente",
-        "Ottima esperienza, staff gentile.",
-        "   Meh.  "
-    ]
     return pd.DataFrame({'Commento': feedbacks_inglese})
 
-def pulizia_testo(df):
+def pulizia_testo(df):  # concetti python: espressioni regolari
     # Rimuovere caratteri speciali, punteggiatura extra o spazi bianchi all'inizio/fine dei commenti
     # Convertire tutti i commenti in minuscolo per garantire uniformità
     print("Pulizia del testo")
     def clean(testo):
         # espressioni regolari come nel modulo 4
         testo = re.sub(r'[^\w\s]', '', testo) # sostituisce la punteggiatura con '', quindi rimuovendolo
+                                # prende solo le parole che hanno spazi e hanno caratteri letterari con \w
         testo = testo.strip().lower()   # strip rimuove gli spazi e lower mette tutto in minuscolo
         return testo
     df['Pulito'] = df['Commento'].apply(clean)
     return df
 
-def estrazione_parole_chiave(df):
+def estrazione_parole_chiave(df):   # concetti python: NLP
     # Estrarre le parole chiave principali da ciascun commento
     print("Estrazioni parole chiave")
     vectorizer = TfidfVectorizer(max_features=3)
@@ -84,47 +77,43 @@ def estrazione_parole_chiave(df):
     print(f"Parole chiave principali: {parole_chiave}")
     return parole_chiave
 
-def analisi_del_sentiment_1(df):            # senza traduzione, ottengo sentiment uguali a 0
+def analisi_del_sentiment_logistic_regression(df):  # preso dal modulo 5
+    # non funziona in italiano, classificazione binaria, niente score ma solo 0 o 1
+    print("Analisi del sentiment con modello di Machine Learning (Logistic Regression)")
+
+    path = '../dataset/sentiment labelled sentences/amazon_cells_labelled.txt'
+    df_sentiment = pd.read_csv(path, names=['review', 'sentiment'], sep='\t')
+
+    reviews = df_sentiment['review'].values
+    sentiments = df_sentiment['sentiment'].values
+    reviews_train, reviews_test, sentiments_train, sentiments_test = train_test_split(
+        reviews, sentiments, test_size=0.2, random_state=42
+    )
+
+    vectorizer = CountVectorizer()
+    vectorizer.fit(reviews_train)
+    X_train = vectorizer.transform(reviews_train)
+    classifier = LogisticRegression()
+    classifier.fit(X_train, sentiments_train)
+
+    X_feedback = vectorizer.transform(df['Pulito'])
+    predizioni = classifier.predict(X_feedback)
+    df['Sentiment'] = predizioni  # 0 = negativo, 1 = positivo
+
+    return df
+
+def analisi_del_sentiment_text_blob(df):           # concetti python: sentiment
+     # senza traduzione, ottengo sentiment uguali a 0
     # Determinare se il sentiment generale (positivo, negativo, neutro) di ciascun commento.
-    print("Analisi del sentiment")
+    print("Analisi del sentiment con text_blob")
     def get_sentiment(text):
         return TextBlob(text).sentiment.polarity  # va da -1 a +1
     df['Sentiment'] = df['Pulito'].apply(get_sentiment)
     return df
 
-def analisi_del_sentiment_2(df):
-    print("Analisi del sentiment")
-    def get_sentiment(text):
-        try:
-            tradotto = TextBlob(text).translate(to='en')
-            return tradotto.sentiment.polarity
-        except Exception as e:
-            print(f"Errore nella traduzione: {e}")
-            return 0  # fallback
-    df['Sentiment'] = df['Pulito'].apply(get_sentiment)
-    return df
-
-
-def analisi_del_sentiment_3(df):
-    print("Analisi del sentiment con VADER (inglese)")
-
-    sia = SentimentIntensityAnalyzer()
-
-    def get_sentiment(text):
-        try:
-            tradotto = TextBlob(text).translate(to='en')
-            score = sia.polarity_scores(str(tradotto))  # ottieni un dizionario con pos, neu, neg, compound
-            return score['compound']  # il valore 'compound' riassume tutto: da -1 (negativo) a +1 (positivo)
-        except Exception as e:
-            print(f"Errore nella traduzione/sentiment: {e}")
-            return 0
-
-    df['Sentiment'] = df['Pulito'].apply(get_sentiment)
-    return df
-
-
-def analisi_del_sentiment_4(df):
-    print("Analisi del sentiment con traduzione + VADER")
+def analisi_del_sentiment_google(df):
+    # lento, funziona anche in italiano perchè traduco
+    print("Analisi del sentiment con traduzione")
     sia = SentimentIntensityAnalyzer()
 
     def get_sentiment(text):
@@ -138,6 +127,7 @@ def analisi_del_sentiment_4(df):
 
     df['Sentiment'] = df['Pulito'].apply(get_sentiment)
     return df
+
 
 def calcolo_sentiment_medio(df):
     # Calcolare il sentimenti medio complessivo per tutti i feedback
@@ -162,21 +152,23 @@ if __name__ == '__main__':
     estrazione_parole_chiave(feedback_df)
     print("\n" + "*"*30 + "\n")
 
-    feedback_df = analisi_del_sentiment_1(feedback_df)
+    feedback_df = analisi_del_sentiment_logistic_regression(feedback_df) # con classificatore addestrato, va male in italiano
     print(feedback_df[['Pulito', 'Sentiment']])
     print("\n" + "*"*30 + "\n")
 
-    # feedback_df = analisi_del_sentiment_2(feedback_df)
-    # print(feedback_df[['Pulito', 'Sentiment']])
-    # print("\n" + "*"*30 + "\n")
+    calcolo_sentiment_medio(feedback_df)
+    print("\n" + "*"*30 + "\n")
+    
+    feedback_df = analisi_del_sentiment_text_blob(feedback_df)    # con text blob, non funziona in italiano
+    print(feedback_df[['Pulito', 'Sentiment']])
+    print("\n" + "*"*30 + "\n")
 
-    # feedback_df_2 = analisi_del_sentiment_3(feedback_df)
-    # print(feedback_df[['Pulito', 'Sentiment']])
-    # print("\n" + "*"*30 + "\n")
-
-    # feedback_df_3 = analisi_del_sentiment_4(feedback_df)
-    # print(feedback_df[['Pulito', 'Sentiment']])
-    # print("\n" + "*"*30 + "\n")
+    calcolo_sentiment_medio(feedback_df)
+    print("\n" + "*"*30 + "\n")
+    
+    feedback_df = analisi_del_sentiment_google(feedback_df)    # funziona con italiano perché traduco ma è lento
+    print(feedback_df[['Pulito', 'Sentiment']])
+    print("\n" + "*"*30 + "\n")
 
     calcolo_sentiment_medio(feedback_df)
     print("\n" + "*"*30 + "\n")
