@@ -81,7 +81,7 @@ def analisi_del_sentiment_logistic_regression(df):  # preso dal modulo 5
     # non funziona in italiano, classificazione binaria, niente score ma solo 0 o 1
     print("Analisi del sentiment con modello di Machine Learning (Logistic Regression)")
 
-    path = '../dataset/sentiment labelled sentences/amazon_cells_labelled.txt'
+    path = '../dataset/sentiment_labelled_sentences/amazon_cells_labelled.txt'
     df_sentiment = pd.read_csv(path, names=['review', 'sentiment'], sep='\t')
 
     reviews = df_sentiment['review'].values
