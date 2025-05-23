@@ -92,12 +92,12 @@ def analisi_del_sentiment_logistic_regression(df):  # preso dal modulo 5
 
     vectorizer = CountVectorizer()
     vectorizer.fit(reviews_train)
-    X_train = vectorizer.transform(reviews_train)
+    x_train = vectorizer.transform(reviews_train)
     classifier = LogisticRegression()
-    classifier.fit(X_train, sentiments_train)
+    classifier.fit(x_train, sentiments_train)
 
-    X_feedback = vectorizer.transform(df['Pulito'])
-    predizioni = classifier.predict(X_feedback)
+    x_feedback = vectorizer.transform(df['Pulito'])
+    predizioni = classifier.predict(x_feedback)
     df['Sentiment'] = predizioni  # 0 = negativo, 1 = positivo
 
     return df
@@ -196,7 +196,7 @@ TextBlob
 Analisi del sentiment
 - è un metodo per determinare il tono emozionale di un testo, quindi positivo, negativo, neutro
 la libreria lo fa in automatico restituiendo due valori
-- polarity: valore da -1 (negativo) e +1 (positivo)
+- .polarity: valore da -1 (negativo) e +1 (positivo)
 - .subjectivity: valore tra 0.0 (oggettivo) e 1.0 (soggettivo)
 textblob va bene per testi semplici e corti, come in questo esercizio.
 Per testi più complessi meglio usare qualche altro modello
