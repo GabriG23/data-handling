@@ -3,3 +3,5 @@ yfinance
 sqlalchemy mysql-connector-python
 redis
 pymongo
+geopy
+shapely
